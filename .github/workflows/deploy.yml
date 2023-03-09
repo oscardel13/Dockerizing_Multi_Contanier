@@ -1,0 +1,43 @@
+name: Deploy Frontend
+on:
+  push:
+    branches:
+      - main # check your repo, your default branch might be master!
+ 
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      # Docker Login
+      - run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+      # Build client and run test
+      - run: docker build -t oscardel13/react-test -f ./client/dockerfile.dev ./client
+      - run: docker run -e CI=true oscardel13/react-test npm test
+
+      # Build Production Images
+      - run: docker build -t oscardel13/multi-client-3-9 ./client
+      - run: docker build -t oscardel13/multi-nginx-3-9  ./nginx
+      - run: docker build -t oscardel13/multi-server-3-9  ./server
+      - run: docker build -t oscardel13/multi-worker-3-9  ./worker
+
+      # Push Images to docker hub
+      - run: docker push oscardel13/multi-client-3-9 
+      - run: docker push oscardel13/multi-nginx-3-9 
+      - run: docker push oscardel13/multi-server-3-9 
+      - run: docker push oscardel13/multi-worker-3-9 
+ 
+      # - name: Generate deployment package
+      #   run: zip -r deploy.zip . -x '*.git*'
+ 
+      # - name: Deploy to EB
+      #   uses: einaregilsson/beanstalk-deploy@v18
+      #   with:
+      #     aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
+      #     aws_secret_key: ${{ secrets.AWS_SECRET_KEY }}
+      #     application_name: docker-react
+      #     environment_name: Dockerreact-env-1
+      #     existing_bucket_name: elasticbeanstalk-us-west-2-086815021488
+      #     region: us-west-2
+      #     version_label: ${{ github.sha }}
+      #     deployment_package: deploy.zip
